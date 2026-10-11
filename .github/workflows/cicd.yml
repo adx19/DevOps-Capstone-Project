@@ -1,0 +1,101 @@
+name: DevOps Final End Term Capstone
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+env:
+  REGISTRY: ghcr.io
+jobs:
+  test:
+    name: Setting up and testing
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checking out Repository
+        uses: actions/checkout@v4
+      
+      - name: Setting up Python
+        uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+
+      - name: Installing Dependencies
+        run: pip install -r requirements.txt
+        working-directory: ./backend
+      
+      - name: Running Backend Tests
+        run: pytest -q
+        working-directory: ./backend
+
+      - name: Setting up Node.js
+        uses: actions/setup-node@v4
+        with: {node-version: "22"}
+
+      - name: Building Frontend
+        run: npm install && npm run build
+        working-directory: ./frontend
+
+  build-push:   
+    name: Building and Pushing Docker Images
+    needs: test
+    runs-on: ubuntu-latest
+    permissions: {contents: read, packages: write}
+    steps: 
+      - name: Checking out Repository
+        uses: actions/checkout@v4
+
+      - name: Logging in to Github Container Registry
+        uses: docker/login-action@v3
+        with: 
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Building Docker Images
+        run: |
+          docker build -t ghcr.io/${{ github.repository_owner }}/taskboard-backend:${{ github.sha }} ./backend
+          docker build -t ghcr.io/${{ github.repository_owner }}/taskboard-frontend:${{ github.sha }} ./frontend
+      
+      - name: Scanning Backend
+        uses: aquasecurity/trivy-action@0.30.0
+        with:
+          image-ref: ghcr.io/${{ github.repository_owner }}/taskboard-backend:${{ github.sha }}
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+      
+      - name: Scanning Frontend
+        uses: aquasecurity/trivy-action@0.30.0
+        with:
+          image-ref: ghcr.io/${{ github.repository_owner }}/taskboard-frontend:${{ github.sha }}
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+        
+      - name: Pushing Images
+        run: |
+          docker push ghcr.io/${{ github.repository_owner }}/taskboard-backend:${{ github.sha }}
+          docker push ghcr.io/${{ github.repository_owner }}/taskboard-frontend:${{ github.sha }}
+  deploy:
+    name: Deploying to Kubernetes
+    if: github.ref == 'refs/heads/main'
+    needs: build-push
+    runs-on: ubuntu-latest
+    permissions: {contents: read, packages: read}
+    steps:
+      - name: Checking out Repository
+        uses: actions/checkout@v4
+      
+      - name: Setting up Helm
+        uses: azure/setup-helm@v4
+
+      - name: Configuring kubectl
+        env: 
+          KUBE_CONFIG_DATA: ${{ secrets.KUBE_CONFIG_DATA }}
+        run: | 
+          mkdir -p ~/.kube
+          echo "$KUBE_CONFIG_DATA" | base64 -d > ~/.kube/config
+
+      - name: Deploying with Helm
+        run: |
+          helm upgrade --install taskboard ./helm/taskboard -n taskboard --create-namespace --set backend.tag=${{ github.sha }} --set frontend.tag=${{ github.sha }} --set backend.image=ghcr.io/${{ github.repository_owner }}/taskboard-backend --set frontend.image=ghcr.io/${{ github.repository_owner }}/taskboard-frontend
+            

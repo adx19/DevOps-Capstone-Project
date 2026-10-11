@@ -1,0 +1,10 @@
+frontend: 
+  image: ghcr.io/adx19/devops-capstone-frontend
+backend:
+  image: ghcr.io/adx19/devops-capstone-backend
+replicaCount: 4
+ingress:
+  enabled: true
+  host: devops-capstone-taskboard.codemorph.me
+hpa:
+  enable: true
