@@ -91,12 +91,10 @@ jobs:
       - name: Create Kubernetes cluster
         uses: helm/kind-action@v1
 
-      - name: Configuring kubectl
-        env: 
-          KUBE_CONFIG_DATA: ${{ secrets.KUBE_CONFIG_DATA }}
-        run: | 
-          mkdir -p ~/.kube
-          echo "$KUBE_CONFIG_DATA" | base64 -d > ~/.kube/config
+      - name: Verify Kubernetes cluster
+        run: |
+          kubectl cluster-info
+          kubectl get nodes
 
       - name: Deploying with Helm
         run: |
