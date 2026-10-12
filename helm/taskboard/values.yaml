@@ -25,4 +25,4 @@ resources:
   limits: {cpu: 500m, memory: 512Mi}
 monitoring:
   serviceMonitor:
-    enabled: true
+    enabled: false
