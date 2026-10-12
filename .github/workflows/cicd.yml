@@ -84,9 +84,12 @@ jobs:
     steps:
       - name: Checking out Repository
         uses: actions/checkout@v4
-      
+
       - name: Setting up Helm
         uses: azure/setup-helm@v4
+
+      - name: Create Kubernetes cluster
+        uses: helm/kind-action@v1
 
       - name: Configuring kubectl
         env: 
