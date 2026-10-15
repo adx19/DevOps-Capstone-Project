@@ -98,5 +98,5 @@ jobs:
 
       - name: Deploying with Helm
         run: |
-          helm upgrade --install taskboard ./helm/taskboard -n taskboard --create-namespace --set backend.tag=${{ github.sha }} --set frontend.tag=${{ github.sha }} --set backend.image=ghcr.io/${{ github.repository_owner }}/taskboard-backend --set frontend.image=ghcr.io/${{ github.repository_owner }}/taskboard-frontend
+          helm upgrade --install taskboard ./helm/taskboard -n taskboard --create-namespace --set backend.tag=${{ github.sha }} --set frontend.tag=${{ github.sha }} --set backend.image=ghcr.io/${{ github.repository_owner }}/taskboard-backend --set frontend.image=ghcr.io/${{ github.repository_owner }}/taskboard-frontend --set monitoring.serviceMonitor.enabled=false
             
